@@ -30,22 +30,22 @@ sudo docker run -d --name emqx -p 1883:1883 -p 8083:8083 -p 8883:8883 -p 8084:80
 
 ```go
 var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		rb := msg.Payload()
-		fmt.Printf("Received message: %v from topic: %s \n", rb, msg.Topic())
+	rb := msg.Payload()
+	fmt.Printf("Received message: %v from topic: %s \n", rb, msg.Topic())
 
-		p, _ := strconv.ParseInt(string(rb), 10, 64)
-		var packet = y3.NewPrimitivePacketEncoder(0x01)
-		packet.SetInt64Value(p)
+	p, _ := strconv.ParseInt(string(rb), 10, 64)
+	var packet = y3.NewPrimitivePacketEncoder(0x01)
+	packet.SetInt64Value(p)
 
-		// send data via QUIC stream.
-		buf := packet.Encode()
-		_, err = stream.Write(buf)
-		if err != nil {
-			log.Printf("❌ Emit %s to yomo-zipper failure with err: %v", msg.Payload(), err)
-		} else {
-			log.Printf("✅ Sending message: %v to yomo-zipper", buf)
-		}
+	// send data via QUIC stream.
+	buf := packet.Encode()
+	_, err = stream.Write(buf)
+	if err != nil {
+		log.Printf("❌ Emit %s to yomo-zipper failure with err: %v", msg.Payload(), err)
+	} else {
+		log.Printf("✅ Sending message: %v to yomo-zipper", buf)
 	}
+}
 ```
 
 ## 3: Create YoMo-Zipper
