@@ -1,8 +1,10 @@
-![yomo-integrate-with-emqx]()
+![yomo-integrate-with-emqx](emqx-yomo.jpg)
 
 # yomo-source-emqx-starter
 
 EMQ X Broker 🙌 YoMo
+
+This project demonstrates how to connect to [EMQX MQTT Broker](https://www.emqx.io) and processing data before [store to a Serverless Database FaunaDB](https://github.com/yomorun/yomo-sink-faunadb-example), the code use MQTT public cloud so you could run directly without installation. Code shows a mathematical SUM operation when every data arrived [in Rx way](https://reactivex.io).
 
 ## About EMQX
 
@@ -12,33 +14,19 @@ Starting from 3.0 release, EMQ X broker fully supports MQTT V5.0 protocol specif
 
 For more information, please visit [EMQ X homepage](https://www.emqx.io/)
 
-## 1: Installing via EMQX Docker Image or use EMQX public cloud
-
-```bash
-docker pull emqx/emqx
-```
-
-start a single node
-
-```bash
-sudo docker run -d --name emqx -p 1883:1883 -p 8083:8083 -p 8883:8883 -p 8084:8084 -p 18083:18083 emqx/emqx
-```
-
-[EMQX officai installation page](https://docs.emqx.io/en/broker/latest/getting-started/install.html)
-
-## 2: Connect EMQX to YoMo
+## 1: Connect EMQX to YoMo
 
 ```go
 var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	rb := msg.Payload()
 	fmt.Printf("Received message: %v from topic: %s \n", rb, msg.Topic())
 
+	// encode data by Y3 codec
 	p, _ := strconv.ParseInt(string(rb), 10, 64)
-	var packet = y3.NewPrimitivePacketEncoder(0x01)
-	packet.SetInt64Value(p)
+	codec := y3.NewCodec(0x10)
+	buf, _ := codec.Marshal(p)
 
-	// send data via QUIC stream.
-	buf := packet.Encode()
+	// send data via QUIC stream
 	_, err = stream.Write(buf)
 	if err != nil {
 		log.Printf("❌ Emit %s to yomo-zipper failure with err: %v", msg.Payload(), err)
@@ -48,7 +36,9 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 }
 ```
 
-## 3: Create YoMo-Zipper
+Run `go run main.go` to start
+
+## 2: Create YoMo-Zipper
 
 see `./zipper/workflow.yaml`
 
@@ -63,42 +53,47 @@ flows:
 
 ```
 
-Run `cd zipper && yomo wf run`
+Run `cd zipper && yomo wf run` to start the [yomo-zipper](https://yomo.run/zipper)
 
-## 4: Write your data process logic
+## 3: Write your data process logic
 
 see `./flow/app.go`
 
 ```go
-var printer = func(_ context.Context, i interface{}) (interface{}, error) {
-	value := i.(int64)
-	fmt.Println("serverless get value:", value)
-	return value, nil
-}
+const observedKey = 0x10
 
-var callback = func(v []byte) (interface{}, error) {
-	res, _, _, err := y3.DecodePrimitivePacket(v)
+// Decode data by Y3 as Int64 type from YoMo-Zipper
+var decode = func(v []byte) (interface{}, error) {
+	val, err := y3.ToInt64(v)
 	if err != nil {
-		log.Errorf("y3 err: %v", err)
-	}
-
-	val, err := res.ToInt64()
-	if err != nil {
-		log.Errorf("y3 toint64 err: %v", err)
+		fmt.Printf("err: %v\n", err)
 	}
 	return val, nil
 }
 
-// Handler will handle data in Rx way
+// Calculate sum every new data arrived, about Scan() Operator, can be read here: http://reactivex.io/documentation/operators/scan.html
+var sum = func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	if acc == nil {
+		return elem, nil
+	}
+	return acc.(int64) + elem.(int64), nil
+}
+
+// Handler handle data in Rx way
 func Handler(rxstream rx.RxStream) rx.RxStream {
 	stream := rxstream.
-		Subscribe(0x01).
-		OnObserve(callback).
-		Map(printer).
+		Subscribe(observedKey).
+		OnObserve(decode).
+		Scan(sum).
 		StdOut()
 
 	return stream
 }
 ```
 
-run `cd ./flow && yomo run`
+run `cd ./flow && yomo run` to start 
+
+## More about YoMo
+
+[YoMo Repository](https://github.com/yomorun/yomo)
+
