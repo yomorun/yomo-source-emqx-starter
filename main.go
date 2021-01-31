@@ -43,12 +43,12 @@ func main() {
 		rb := msg.Payload()
 		fmt.Printf("Received message: %v from topic: %s \n", rb, msg.Topic())
 
+		// encode data by Y3 codec
 		p, _ := strconv.ParseInt(string(rb), 10, 64)
-		var packet = y3.NewPrimitivePacketEncoder(0x01)
-		packet.SetInt64Value(p)
+		codec := y3.NewCodec(0x10)
+		buf, _ := codec.Marshal(p)
 
-		// send data via QUIC stream.
-		buf := packet.Encode()
+		// send data via QUIC stream
 		_, err = stream.Write(buf)
 		if err != nil {
 			log.Printf("❌ Emit %s to yomo-zipper failure with err: %v", msg.Payload(), err)

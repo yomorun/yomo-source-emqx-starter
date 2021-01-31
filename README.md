@@ -57,7 +57,7 @@ Run `cd zipper && yomo wf run` to start the [yomo-zipper](https://yomo.run/zippe
 
 ## 3: Write your data process logic
 
-see `./flow/app.go`
+We need to calculate the sum each time new data arrives, see `./flow/app.go`
 
 ```go
 const observedKey = 0x10
@@ -89,6 +89,7 @@ func Handler(rxstream rx.RxStream) rx.RxStream {
 
 	return stream
 }
+
 ```
 
 run `cd ./flow && yomo run` to start 
