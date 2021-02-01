@@ -14,6 +14,10 @@ Starting from 3.0 release, EMQ X broker fully supports MQTT V5.0 protocol specif
 
 For more information, please visit [EMQ X homepage](https://www.emqx.io/)
 
+## About YoMo
+
+[YoMo](https://github.com/yomorun/yomo) is an open-source Streaming Serverless Framework for building Low-latency Edge Computing applications. Built atop QUIC Transport Protocol and Functional Reactive Programming interface. makes real-time data processing reliable, secure, and easy.
+
 ## 1: Connect EMQX to YoMo
 
 ```go
